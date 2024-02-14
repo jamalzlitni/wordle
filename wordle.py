@@ -1,5 +1,7 @@
 import random
 import nltk   # checks to make sure guesses are valid words, make sure to download nltk on computer
+import xlwings as xw
+from datetime import datetime
 
 nltk.download('words')
 english_words = set(nltk.corpus.words.words())
@@ -9,9 +11,16 @@ with open('C:/Users/jazdo/Desktop/wordle/words.txt', 'r') as f:     # read in th
 words = words.split(',')
 words = [word.strip(" '") for word in words]
 
+wb = xw.Book("C:\\Users\\jazdo\\Desktop\\wordle\\wordle.xlsx")
+sheet = wb.sheets["no_letters"]         # gaining data for displaying no letters to the player about what is left
 
 def main():
+    global sheet
+    global wb
+
     counter = 0                     # keeps track of the number of guesses
+    guesses = []
+    won = False             # keep track of if the user won
 
     while True:
         guess = input("Enter guess: ")
@@ -28,14 +37,20 @@ def main():
 
         guess = guess.upper()           # now format the guess to uppercase for a better display to the user
         print(check(guess))
+        print()
         counter+=1
+        guesses.append(guess)               # add the guess to the guess list for data
 
         if guess == correct:            # this while loop in main will only terminate once the user gets the word correct, or uses up their 6 guesses
             print("CONGRATULATIONS, you got the word in " + str(counter) + " guesses!")
+            won = True         
             break
         if counter >= 6:
             print("Better luck next time, the word was: " + correct)
             break
+
+    # Log the game data to Excel
+    log_data(counter, guesses, won)
     
 
 
@@ -64,6 +79,25 @@ def check(guess):
             return_word += (' ' + guess[j] + ' ')
     return return_word.upper()
 
+
+def log_data(counter, guesses, won):                # add data about the game played into the excel file
+    global sheet
+
+    row = sheet.cells(sheet.cells.last_cell.row, 1).end("up").row + 1           # find the first open row
+
+    # Write data to Excel
+    sheet.range(f"A{row}").value = "Yes" if won else "No"               # if they won or not
+    if won:
+        sheet.range(f"B{row}").value = counter                  # if won, add the number of guesses taken
+    sheet.range(f"C{row}").value = correct                  
+    for i in range(6):                      # add the guesses to their respective columns and leave unguessed columns blank
+        if i < len(guesses):
+            sheet.range(row, i + 4).value = guesses[i]
+        else:
+            sheet.range(row, i + 4).value = ""
+    sheet.range(f"J{row}").value = datetime.now().strftime("%H:%M:%S")          # time of day
+    sheet.range(f"K{row}").value = datetime.now().strftime("%D")            # date
+
 if __name__ == '__main__':
     correct = (random.choice(words)).upper()                # choose a random word from the words list as the first correct word when running the program
 
@@ -78,5 +112,8 @@ if __name__ == '__main__':
             correct = (random.choice(words)).upper()
 
             main()
-        else: exit()
+        else:
+            wb.save("C:\\Users\\jazdo\\Desktop\\wordle\\wordle.xlsx")           # save and close the xlsx file
+            wb.close()
+            break
         
