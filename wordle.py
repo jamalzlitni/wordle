@@ -21,6 +21,7 @@ def main():
     counter = 0                     # keeps track of the number of guesses
     guesses = []
     won = False             # keep track of if the user won
+    start_time = datetime.now()  # Start time of the game
 
     while True:
         guess = input("Enter guess: ")
@@ -49,8 +50,10 @@ def main():
             print("Better luck next time, the word was: " + correct)
             break
 
+    end_time = datetime.now()  # End time of the game
+    time_taken = end_time - start_time  # Calculate time taken
     # Log the game data to Excel
-    log_data(counter, guesses, won)
+    log_data(counter, guesses, won, time_taken)
     
 
 
@@ -80,7 +83,7 @@ def check(guess):
     return return_word.upper()
 
 
-def log_data(counter, guesses, won):                # add data about the game played into the excel file
+def log_data(counter, guesses, won, time_taken):                # add data about the game played into the excel file
     global sheet
 
     row = sheet.cells(sheet.cells.last_cell.row, 1).end("up").row + 1           # find the first open row
@@ -95,8 +98,9 @@ def log_data(counter, guesses, won):                # add data about the game pl
             sheet.range(row, i + 4).value = guesses[i]
         else:
             sheet.range(row, i + 4).value = ""
-    sheet.range(f"J{row}").value = datetime.now().strftime("%H:%M:%S")          # time of day
+    sheet.range(f"J{row}").value = datetime.now().strftime("%H:%M:%S")      # time of day
     sheet.range(f"K{row}").value = datetime.now().strftime("%D")            # date
+    sheet.range(f"L{row}").value = str(time_taken)                          # time taken
 
 if __name__ == '__main__':
     correct = (random.choice(words)).upper()                # choose a random word from the words list as the first correct word when running the program
