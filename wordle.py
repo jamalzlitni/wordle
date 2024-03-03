@@ -12,7 +12,7 @@ words = words.split(',')
 words = [word.strip(" '") for word in words]
 
 wb = xw.Book("C:\\Users\\jazdo\\Desktop\\wordle\\wordle.xlsx")
-sheet = wb.sheets["no_letters"]         # gaining data for displaying no letters to the player about what is left
+sheet = wb.sheets["alphabetical_list"]         # gaining data for displaying letters in an alphabetical list to the player about what is left
 
 def main():
     global sheet
@@ -38,9 +38,11 @@ def main():
 
         guess = guess.upper()           # now format the guess to uppercase for a better display to the user
         print(check(guess))
+        guesses.append(guess)               # add the guess to the guess list for data
+        print_alphabetical_list(guesses)
         print()
         counter+=1
-        guesses.append(guess)               # add the guess to the guess list for data
+        
 
         if guess == correct:            # this while loop in main will only terminate once the user gets the word correct, or uses up their 6 guesses
             print("CONGRATULATIONS, you got the word in " + str(counter) + " guesses!")
@@ -82,6 +84,16 @@ def check(guess):
             return_word += (' ' + guess[j] + ' ')
     return return_word.upper()
 
+def print_alphabetical_list(guesses):
+    alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    guessed_letters = set()
+    
+    for guess in guesses:
+        guessed_letters.update(set(guess))
+    
+    confirmed_letters = set(correct) & guessed_letters
+    remaining_letters = [letter for letter in alphabet if letter not in guessed_letters or letter in confirmed_letters]
+    print(' '.join(remaining_letters))
 
 def log_data(counter, guesses, won, time_taken):                # add data about the game played into the excel file
     global sheet
