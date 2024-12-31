@@ -1,3 +1,4 @@
+from colorama import Fore, Style    # terminal output formatting
 import random
 import nltk   # checks to make sure guesses are valid words, make sure to download nltk on computer
 import xlwings as xw
@@ -12,7 +13,7 @@ words = words.split(',')
 words = [word.strip(" '") for word in words]
 
 wb = xw.Book("C:\\Users\\jazdo\\Desktop\\wordle\\wordle.xlsx")
-sheet = wb.sheets["alphabetical_list"]         # gaining data for displaying letters in an alphabetical list to the player about what is left
+sheet = wb.sheets["qwerty"]         # gaining data for displaying letters in an alphabetical list to the player about what is left
 
 def main():
     global sheet
@@ -39,7 +40,8 @@ def main():
         guess = guess.upper()           # now format the guess to uppercase for a better display to the user
         print(check(guess))
         guesses.append(guess)               # add the guess to the guess list for data
-        print_alphabetical_list(guesses)
+        # print_alphabetical_list(guesses)
+        print_qwerty(guesses)
         print()
         counter+=1
         
@@ -62,27 +64,41 @@ def main():
 # Compare the user guess to the correct word, return the info on the guessed word about          #
 # incorrect letters, correct letters in the wrong place, and correct letters in the right place. #
 def check(guess):
-    return_word = ''                # the guess string to be returned and printed out showing the user their progress
-    doneLetters = []                # doneLetters and rightIndex help keep track of letters that appear multiple times in the correct word in order to output the information correctly
-    rightIndex = []
+    return_word = ""
+    correct_counts = {}  # counts occurrences of each letter in the correct word
+    guess_status = [None] * 5  # tracks the status of each letter in the guess (None, 'green', 'yellow', 'red')
 
-    for i in range(0, 5):           # iterate through the guess and correct word to fill out rightIndex and doneLetters 
-        if guess[i] == correct[i]:      # appends index of every correct letter in the guess to rightIndex 
-            rightIndex.append(i)
-        for j in range(0, 5):
-            if j != i and guess[i] == correct[j] and j not in rightIndex:       # does not append a letter to doneLetters if there are multiple in the word and not all of them are correct
-                break
-            if j == 4:
-                doneLetters.append(guess[i])
+    # count occurrences of each letter in the correct word
+    for letter in correct:
+        correct_counts[letter] = correct_counts.get(letter, 0) + 1
 
-    for j in range(0, 5):           # using rightIndex and doneLetters, assign each letter it's corresponding place identifier
-        if j in rightIndex:         # if a letter is in the right spot, put plus signs around it
-            return_word += (' +' + guess[j] + '+ ')
-        elif guess[j] in correct and guess[j] not in doneLetters and return_word.count(guess[j]) < correct.count(guess[j]):     # if a letter is in the guess but not in the correct spot, put minus signs around it
-            return_word += (' -' + guess[j] + '- ')
-        else:                       # otherwise, put nothing around the letter
-            return_word += (' ' + guess[j] + ' ')
-    return return_word.upper()
+    # first pass: Mark correct placements (green)
+    for i in range(5):
+        if guess[i] == correct[i]:  # correct placement
+            guess_status[i] = 'green'
+            correct_counts[guess[i]] -= 1  # reduce available count for that letter
+
+    # second pass: Mark misplaced letters (yellow)
+    for i in range(5):
+        if guess_status[i] is None and guess[i] in correct and correct_counts[guess[i]] > 0:
+            guess_status[i] = 'yellow'
+            correct_counts[guess[i]] -= 1  # reduce available count for that letter
+
+    # third pass: Mark incorrect letters (red)
+    for i in range(5):
+        if guess_status[i] is None:
+            guess_status[i] = 'red'
+
+    # construct the return word with colors
+    for i in range(5):
+        if guess_status[i] == 'green':
+            return_word += f"{Fore.GREEN}{guess[i]}{Style.RESET_ALL} "
+        elif guess_status[i] == 'yellow':
+            return_word += f"{Fore.YELLOW}{guess[i]}{Style.RESET_ALL} "
+        else:  # 'red'
+            return_word += f"{Fore.RED}{guess[i]}{Style.RESET_ALL} "
+
+    return return_word.strip()
 
 def print_alphabetical_list(guesses):
     alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -92,8 +108,48 @@ def print_alphabetical_list(guesses):
         guessed_letters.update(set(guess))
     
     confirmed_letters = set(correct) & guessed_letters
-    remaining_letters = [letter for letter in alphabet if letter not in guessed_letters or letter in confirmed_letters]
+    remaining_letters = [letter for letter in alphabet if letter not in guessed_letters or letter in confirmed_letters]    # remove any incorrect guessed letters from display
     print(' '.join(remaining_letters))
+
+def print_qwerty(guesses):
+    qwerty_rows = [
+        list(""),
+        list("QWERTYUIOP"),
+        list("ASDFGHJKL"),
+        list("ZXCVBNM")
+    ]
+
+    guessed_status = {}  # store letter status: 'correct', 'misplaced', 'incorrect'
+
+    for guess in guesses:
+        for i, letter in enumerate(guess):
+            if letter == correct[i]:  # correct placement
+                guessed_status[letter] = 'correct'
+            elif letter in correct:  # misplaced but in the word
+                if guessed_status.get(letter) != 'correct':  # only override if not already correct
+                    guessed_status[letter] = 'misplaced'
+            else:  # Incorrect
+                guessed_status.setdefault(letter, 'incorrect')
+
+    for row in qwerty_rows:     # update qwerty layout colors
+        row_display = []
+        for letter in row:
+            if guessed_status.get(letter) == 'correct':
+                row_display.append(f"{Fore.GREEN}{letter}{Style.RESET_ALL}")
+            elif guessed_status.get(letter) == 'misplaced':
+                row_display.append(f"{Fore.YELLOW}{letter}{Style.RESET_ALL}")
+            elif guessed_status.get(letter) == 'incorrect':
+                row_display.append(f"{Fore.RED}{letter}{Style.RESET_ALL}")
+            else:
+                row_display.append(letter)
+
+        # indenation attempts to look more like keyboard, not working yet
+        if i == 1:
+            print(" " * 2 + ' '.join(row_display))  # indent second row
+        elif i == 2:
+            print(" " * 4 + ' '.join(row_display))  # indent third row
+        else:
+            print(' '.join(row_display))  # no indentation for the first row
 
 def log_data(counter, guesses, won, time_taken):                # add data about the game played into the excel file
     global sheet
